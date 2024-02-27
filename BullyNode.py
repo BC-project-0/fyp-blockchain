@@ -101,14 +101,14 @@ class BullyNode(Node):
 
         # After block is published .. New message is sent to reset leader
         if data['event'] == "Block Published":
-            print("Block Published by Leader")
-            self.leader = None
-            self.stop_leaderElection.clear()
-            self.published = False
             latest_block = self.blockchain.get_latest_block()
             new_block = Block(latest_block.index + 1, self.leader_ip,
                               latest_block.hash, "new block", "signature", "new user data", str(self.leader.id) + " elected")
             self.blockchain.add_block(new_block)
+            print("Block Published by Leader")
+            self.leader = None
+            self.stop_leaderElection.clear()
+            self.published = False
             return
 
     def node_disconnect_with_outbound_node(self, node):

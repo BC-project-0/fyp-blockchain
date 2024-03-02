@@ -38,11 +38,11 @@ class BullyNode(Node):
             data = base64.b64decode(bytes(data, 'utf8'))
             private_key = self.keys['private_key']
 
-            file_temp = open("temp.bin", 'wb')
+            file_temp = open("temp-{}.bin".format(self.id), 'wb')
             file_temp.write(data)
             file_temp.close()
 
-            file_temp = open("temp.bin", "rb")
+            file_temp = open("temp-{}.bin".format(self.id), "rb")
 
             priKey = RSA.import_key(private_key)
             enc_session_key, nonce, tag, ciphertext = [
@@ -90,7 +90,7 @@ class BullyNode(Node):
             print("From "+str(node.id)+" : It is the leader")
             self.prevLeader = node
             self.leader = node
-            self.leader_ip = str(self.host) + ":" + str(self.port)
+            self.leader_ip = str(node.host) + ":" + str(node.port)
             self.votes = 0
             return
 
@@ -98,13 +98,29 @@ class BullyNode(Node):
         if data["event"] == "Heartbeat":
             print(decrypt(self, data["message"]))
             return
-
+        
+        if data["event"] == "Registration":
+            unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
+            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 0 , "commitment_value" : commitment_value , "public_key" : public_key}
+            print("User Registered")
+            return
+            
+        if data["event"] == "Record Update":
+            unique_id , index , commitment_value = (decrypt(self,data["message"])).split(":")
+            record = self.blockchain.unique_id_to_commitment_value_mapping[unique_id]
+            record["index"] = int(index)
+            record["commitment_value"] = commitment_value
+            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = record
+            print("Record Updated")
+            return 
+        
         # After block is published .. New message is sent to reset leader
         if data['event'] == "Block Published":
             latest_block = self.blockchain.get_latest_block()
             new_block = Block(latest_block.index + 1, self.leader_ip,
-                              latest_block.hash, "new block", "signature", "new user data", str(self.leader.id) + " elected")
+                              latest_block.hash, "new block", "signature", "", self.blockchain.logs.append(str(self.leader.id) + " elected") , time.time())
             self.blockchain.add_block(new_block)
+            self.blockchain.logs = []
             print("Block Published by Leader")
             self.leader = None
             self.stop_leaderElection.clear()
@@ -115,7 +131,6 @@ class BullyNode(Node):
         print("Diconnecting from ->", node)
         return
 
-    # note to nitheesh decryption encryption works cant send bytes thru sockets as of now and sending ciphertext made with resp                                 # pub keys also works
     def send_encrypted_msg(self, event, msg):
         for node in self.all_nodes:
             session_key = get_random_bytes(16)

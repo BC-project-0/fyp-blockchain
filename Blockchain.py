@@ -4,7 +4,7 @@ import time
 
 
 class Block:
-    def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs):
+    def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
         self.index = index
         self.leader_ip = leader_ip
         self.previous_hash = previous_hash
@@ -12,7 +12,7 @@ class Block:
         self.digital_signature = digital_signature
         self.user_data = user_data
         self.logs = logs
-        self.timestamp = time.time()
+        self.timestamp = timestamp
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
@@ -38,10 +38,12 @@ class Blockchain:
     def __init__(self):
         self.chain = []
         self.create_genesis_block()
+        self.logs = []  # set it to empty list every 10 transactions after publishing a block
+        self.unique_id_to_commitment_value_mapping = dict()
 
     def create_genesis_block(self):
         genesis_block = Block(0, "0", "0", "Genesis Block",
-                              "0", "Genesis User Data", "Genesis Logs")
+                              "0", "Genesis User Data", [], 0)
         self.chain.append(genesis_block)
 
     def get_latest_block(self):
@@ -69,3 +71,19 @@ class Blockchain:
     def print_chain(self):
         for block in self.chain:
             block.print_block()
+
+    def authenticate(self, id, xi, yi, i, s):
+        record = self.unique_id_to_commitment_value_mapping[id]
+        j = record["index"]
+        y_prev = record["commitment_value"]
+        pk = record["public_key"]
+        if i == j:
+            if y_prev == xi:
+                record = {"index": j + 1,
+                          "commitment_value": yi, "public_key": pk}
+                self.unique_id_to_commitment_value_mapping[id] = record
+                return j + 1
+            else:
+                return False
+        else:
+            pass

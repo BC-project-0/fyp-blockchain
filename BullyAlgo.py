@@ -2,6 +2,8 @@ import random
 import time
 from threading import Thread
 from random import choices
+from Blockchain import Blockchain
+from Blockchain import Block
 
 flag = False
 
@@ -61,7 +63,7 @@ def leader_election(currNode,senderNode,data):
 def heartbeat(currNode):
     while not currNode.published:
         print("heartbeat testing ...")
-        event,data = "Heartbeat","Heartbeat from leader =>" + str(currNode.host) + ":" +  str(currNode.port)
+        event,data = "Heartbeat","Heartbeat from leader -> " + str(currNode.host) + ":" +  str(currNode.port)
         currNode.send_encrypted_msg(event,data)
         time.sleep(3)
 
@@ -70,4 +72,6 @@ def publish_block(currNode):
     event,data = "Block Published",""
     currNode.send_encrypted_msg(event,data)
     currNode.published = True
+    latest_block = currNode.blockchain.get_latest_block()
+    currNode.blockchain.add_block(Block(latest_block.index + 1, str(currNode.host) + ":" +  str(currNode.port), latest_block.hash, "new block", "signature", "", str(currNode.id) + " elected" , time.time()))
     print("BLOCK PUBLISHED")

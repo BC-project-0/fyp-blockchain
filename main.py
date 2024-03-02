@@ -21,6 +21,6 @@ function = {
 }
 
 while True:
-    choice = int(input("\n\n1)RUN \n2)EXIT \n\n COMMAND : "))
+    choice = int(input("\n\n1)RUN \n2)EXIT \n\nCOMMAND : "))
     function[choice]()
 

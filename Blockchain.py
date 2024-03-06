@@ -1,6 +1,5 @@
 import hashlib
 import json
-import time
 
 
 class Block:
@@ -77,13 +76,15 @@ class Blockchain:
         j = record["index"]
         y_prev = record["commitment_value"]
         pk = record["public_key"]
+        result = j
         if i == j:
             if y_prev == xi:
-                record = {"index": j + 1,
-                          "commitment_value": yi, "public_key": pk}
+                record = {"index": j + 1,"commitment_value": yi, "public_key": pk}
                 self.unique_id_to_commitment_value_mapping[id] = record
-                return j + 1
             else:
-                return False
+                record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
+                self.unique_id_to_commitment_value_mapping[id] = record
         else:
-            pass
+            record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
+            self.unique_id_to_commitment_value_mapping[id] = record
+        return j + 1

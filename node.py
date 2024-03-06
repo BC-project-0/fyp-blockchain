@@ -65,11 +65,15 @@ while True:
         if unique_id in blockchain.unique_id_to_commitment_value_mapping:
             record = blockchain.unique_id_to_commitment_value_mapping[unique_id]
             previous_commitment_value = record["commitment_value"]
+            index = record["index"]
             result = Blockchain.authenticate(blockchain,unique_id,previous_commitment_value,otp,index,signature)
-            if result :
+            if result == index + 1 :
                 event,msg = "Record Update","{}:{}:{}".format(unique_id,result,otp)
                 node.send_encrypted_msg(event,msg)
                 print("Authentication Successfull")
+            elif result: 
+                print(result)
+                print("Out of Sync")
             else:
                 print("Authentication Failed")
         else:

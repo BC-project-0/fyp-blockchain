@@ -5,7 +5,7 @@ import time
 def run():
     N = int(input("\nEnter number of nodes :"))
     for i in range(N):
-        command = "python3 node.py {} {}".format(i,N)
+        command = "python3 nodev2.py {} {}".format(i,N)
         subprocess.Popen(['osascript', '-e', 'tell application "System Events" to keystroke "`" using {control down, shift down}'])
         time.sleep(0.5)
         print("Executing command : ", command)

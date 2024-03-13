@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload to API</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        #fileUpload {
+            margin-bottom: 10px;
+        }
+
+        #message {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Upload File to API</h1>
+    <input type="file" id="fileUpload">
+    <button id="submitButton">Send to API</button>
+    <div id="message"></div>
+
+    <script>
+        const fileUpload = document.getElementById('fileUpload');
+        const submitButton = document.getElementById('submitButton');
+        const message = document.getElementById('message');
+
+        submitButton.addEventListener('click', async () => {
+            // Check if file is selected
+            if (!fileUpload.files.length) {
+                message.textContent = 'Please select a file to upload.';
+                return;
+            }
+
+            const file = fileUpload.files[0];
+
+            // Read file content
+            const reader = new FileReader();
+            reader.readAsText(file);
+            reader.onload = async (event) => {
+                const data = JSON.parse(event.target.result);
+
+                const newData = {
+                    id: data["id"],
+                    old_commitment_value: data["xi"],
+                    new_commitment_value: data["yi"],
+                    index: data["i"],
+                    signature: data["signature"],
+                    pk: data["pk"]
+                }
+
+
+                const response = await fetch('http://localhost:1080/authenticate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newData)
+                });
+
+                if (response.ok) {
+                    const serverMessage = await response.json();
+                    console.log(serverMessage["message"])
+                    message.textContent = `Message from server: ${serverMessage["message"]}`;
+                } else {
+                    const errorText = await response.text();
+                    message.textContent = `Error: ${errorText}`;
+                }
+            };
+
+            reader.onerror = (error) => {
+                message.textContent = `Error reading file: ${error.message}`;
+            };
+        });
+
+    </script>
+</body>
+
+</html>

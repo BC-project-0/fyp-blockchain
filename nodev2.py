@@ -11,7 +11,6 @@ from BullyAlgo import *
 from Blockchain import Blockchain
 from starlette.responses import FileResponse
 from utils import verify_initial_signature
-from utils import verify_signature
 
 
 class RegisterPayload(BaseModel):
@@ -110,21 +109,19 @@ async def authentication(body: AuthenticationPayload):
     signature = body.signature
     index = body.index
     pk = body.pk
-    if verify_signature(pk.encode("utf-8"),unique_id,old_commitment_value,new_commitment_value,index,signature) == False: 
-        return {"message": "User Authentication Failed"}
 
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         result = Blockchain.authenticate(
-            blockchain, unique_id, old_commitment_value, new_commitment_value, index, signature)
-        if result == index + 1:
+            blockchain, unique_id, old_commitment_value, new_commitment_value, index, signature, pk)
+        if result == "Success":
             event, msg = "Record Update", "{}:{}:{}".format(
-                unique_id, result, new_commitment_value)
+                unique_id, index+1, new_commitment_value)
             node.send_encrypted_msg(event, msg)
-            return {"message": "User Authentication Success", "index": result}
+            return {"message": result}
         else:
-            return {"message": "User Authentication Failed", "index": result}
+            return {"message": result}
     else:
-        return {"message": "User is not registered", "index": result}
+        return {"message": "User is not registered"}
 
 
 if __name__ == "__main__":

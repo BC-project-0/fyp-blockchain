@@ -101,7 +101,7 @@ class BullyNode(Node):
         
         if data["event"] == "Registration":
             unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
-            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 0 , "commitment_value" : commitment_value , "public_key" : public_key}
+            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 1 , "commitment_value" : commitment_value , "public_key" : public_key}
             print("User Registered")
             return
             

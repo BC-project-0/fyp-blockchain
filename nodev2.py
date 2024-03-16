@@ -11,6 +11,7 @@ from BullyAlgo import *
 from Blockchain import Blockchain
 from starlette.responses import FileResponse
 from utils import verify_initial_signature
+import json
 
 
 class RegisterPayload(BaseModel):
@@ -60,6 +61,12 @@ for i in range(connections):
     if i != id:
         node.connect_with_node('127.0.0.1', 8000+i)
 
+try:
+    with open("internal_state.json","r") as file:
+        data = json.load(file)
+        blockchain.unique_id_to_commitment_value_mapping = data
+except IOError as e:
+    print(f"Error reading data: {e}")
 
 @app.get("/")
 async def root():
@@ -92,6 +99,9 @@ async def registration(body: RegisterPayload):
             event, data = "Registration", "{}:{}:{}".format(
                 unique_id, commitment_value, public_key)
             node.send_encrypted_msg(event, data)
+            with open("internal_state.json","w") as file:
+                json.dump(blockchain.unique_id_to_commitment_value_mapping,
+                          file,indent=4)
             return {"message": "User Registered"}
         else:
             return {"message": "User Could not be registered"}
@@ -117,6 +127,8 @@ async def authentication(body: AuthenticationPayload):
             event, msg = "Record Update", "{}:{}:{}".format(
                 unique_id, index+1, new_commitment_value)
             node.send_encrypted_msg(event, msg)
+            with open("internal_state.json","w") as file:
+                json.dump(blockchain.unique_id_to_commitment_value_mapping,file,indent=4)
             return {"message": result}
         else:
             return {"message": result}

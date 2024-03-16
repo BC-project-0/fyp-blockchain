@@ -8,6 +8,7 @@ import base64
 import os
 from Blockchain import Block
 from Blockchain import Blockchain
+import json
 
 
 class BullyNode(Node):
@@ -23,6 +24,13 @@ class BullyNode(Node):
         self.keys = {"public_key": key.publickey().export_key(),
                      "private_key": key.export_key()}
         self.connected_keys = {}
+
+        try:
+            with open("internal_state.json","r") as file:
+                data = json.load(file)
+                self.blockchain.unique_id_to_commitment_value_mapping = data
+        except IOError as e:
+            print(f"Error reading data: {e}")
 
     # used to identity whether current node is contesting for leader or not
     electionProcess = False
@@ -126,6 +134,11 @@ class BullyNode(Node):
             self.stop_leaderElection.clear()
             self.published = False
             return
+    
+    def store_otp_state(self):
+        with open("internal_state.json","w") as file:
+            json.dump(self.blockchain.unique_id_to_commitment_value_mapping,
+                          file,indent=4) 
 
     def node_disconnect_with_outbound_node(self, node):
         print("Diconnecting from ->", node)

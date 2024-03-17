@@ -15,6 +15,8 @@ class Block:
         self.user_data = user_data
         self.logs = logs
         self.timestamp = timestamp
+        self.file_mapping = dict()
+        self.base64_mapping = dict()
         self.hash = self.calculate_hash()
 
     def calculate_hash(self):
@@ -26,7 +28,9 @@ class Block:
             "digital_signature": self.digital_signature,
             "user_data": self.user_data,
             "logs": self.logs,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
+            "file_mapping": str(self.file_mapping),
+            "base64_mapping": str(self.base64_mapping)
         }
         block_string = json.dumps(block_data, sort_keys=True)
         return hashlib.sha256(block_string.encode()).hexdigest()
@@ -57,8 +61,6 @@ class Blockchain:
         self.create_genesis_block()
         self.logs = []  # set it to empty list every 10 transactions after publishing a block
         self.unique_id_to_commitment_value_mapping = dict()
-        self.file_mapping = dict()
-        self.base64_mapping = dict()
 
     def create_genesis_block(self):
         genesis_block = Block(0, "0", "0", "Genesis Block",
@@ -121,17 +123,21 @@ class Blockchain:
     async def upload(self, id, file):
         contents = await file.read()
         encoded_contents = base64.b64encode(contents)
-        if id in self.file_mapping:
-            self.file_mapping[id] = [file.filename()]
+        block = self.get_latest_block()
+        if id not in block.file_mapping:
+            block.file_mapping[id] = [file.filename]
+            block.base64_mapping[id + ":" +  file.filename] = encoded_contents
         else:
-            self.file_mapping[id].append(file.filename())
-        self.base64_mapping[id + file.filename()] = encoded_contents
-
+            block.file_mapping[id].append(file.filename)
+            block.base64_mapping[id + ":" + file.filename] = encoded_contents
+        block.hash = block.calculate_hash()
+        
     def get_file(self,id,filename):
-        if id + filename in self.base64_mapping:
-            decoded_contents = base64.b64decode(self.base64_mapping[id + filename])
-            with open(filename, 'wb') as file:
-                file.write(decoded_contents)
-            return file
-        else:
-            return None
+        for block in self.chain:
+            if id + ":" +filename in block.base64_mapping:
+                decoded_contents = base64.b64decode(block.base64_mapping[id + ":" + filename])
+                print("File Found !!!!")
+                with open(filename, 'wb') as file:
+                    file.write(decoded_contents)
+                return filename
+        return None

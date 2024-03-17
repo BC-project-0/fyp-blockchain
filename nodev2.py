@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -31,9 +31,6 @@ class StoreUserData(BaseModel):
     id: str
     data: str
 
-class UploadPayload(BaseModel):
-    id: str
-    file: UploadFile = File(...)
 
 app = FastAPI()
 
@@ -132,41 +129,43 @@ async def authentication(body: AuthenticationPayload):
         return {"message": "User is not registered"}
 
 @app.post("/data")
-async def upload(body : StoreUserData):
-    node.store_user_data(body.id,body.data)
+async def upload(body: StoreUserData):
+    node.store_user_data(body.id, body.data)
     event, msg = "Transaction Pool Update", "{}:{}".format(
-                body.id,body.data)
+        body.id, body.data)
     node.send_encrypted_msg(event, msg)
     return {"message": "Success"}
-    
+
 
 @app.get("/users")
 async def users():
-    return blockchain.unique_id_to_commitment_value_mapping.keys()
+    return {"users": list(blockchain.unique_id_to_commitment_value_mapping.keys())}
 
 
 @app.get("/{unique_id}/files")  # user name
-async def files(unique_id: int):
-    return blockchain.file_mapping[unique_id]
+async def files(unique_id: str):
+    for block in blockchain.chain:
+        if unique_id in block.file_mapping:
+            return block.file_mapping[unique_id]
+    return []
 
 
 @app.post("/upload")
-async def upload(body: UploadPayload):
-    unique_id = body.id
-    file = body.file
+async def upload(file: UploadFile = File(...), id: str = Form(...)):
+    unique_id = id
+    uploaded_file = file
 
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
-        blockchain.upload(unique_id, file)
+        await blockchain.upload(unique_id, uploaded_file)
         return {"message": "File uploaded"}
     else:
         return {"message": "User is not registered"}
 
-
-@app.get("{id}/get_file/{filename}")
+@app.get("/{id}/files/{filename}")
 async def get_file(id: str, filename: str):
-    file = blockchain.get_file(id, filename)
-    if file != None:
-        return {"message": "File Retrieved", "file": file}
+    filename = blockchain.get_file(id, filename)
+    if filename != None:
+        return FileResponse(filename)
     else:
         return {"message": "File retrieval failed"}
 

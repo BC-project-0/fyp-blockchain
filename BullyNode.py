@@ -210,8 +210,7 @@ class BullyNode(Node):
         return sig.decode("latin-1")
     
     def verify_signature(self,node,pool_data,data,signature):
-        print("Verify")
-        data = json.dumps({
+        bytes_data = json.dumps({
         "node": str(node.host),
         "pool_data": pool_data,
         "data" : data
@@ -219,10 +218,13 @@ class BullyNode(Node):
 
         pk = self.connected_keys[node.id]
         pubKey = serialization.load_pem_public_key(pk.export_key())
+        hasher = hashes.Hash(hashes.SHA256())
+        hasher.update(bytes_data)
+        digest = hasher.finalize()
         try:
             pubKey.verify(
                 signature.encode("latin-1"),
-                data,
+                digest,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
                     salt_length=20

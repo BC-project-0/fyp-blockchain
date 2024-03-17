@@ -4,7 +4,6 @@ from utils import verify_signature
 import time
 import base64
 
-
 class Block:
     def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
         self.index = index
@@ -122,16 +121,28 @@ class Blockchain:
         
     async def upload(self, id, file):
         contents = await file.read()
-        encoded_contents = base64.b64encode(contents)
+        encoded_contents = base64.b64encode(contents).decode('utf-8')  # Decode bytes to string
         block = self.get_latest_block()
-        if id not in block.file_mapping:
-            block.file_mapping[id] = [file.filename]
-            block.base64_mapping[id + ":" +  file.filename] = encoded_contents
-        else:
-            block.file_mapping[id].append(file.filename)
+        if block is not None:
+            if id not in block.file_mapping:
+                block.file_mapping[id] = [file.filename]
+            else:
+                block.file_mapping[id].append(file.filename)
             block.base64_mapping[id + ":" + file.filename] = encoded_contents
-        block.hash = block.calculate_hash()
-        
+            block.hash = block.calculate_hash()
+
+            # Serialize the blockchain to JSON and write to file
+            with open("blocks.json", "w") as json_file:
+                blocks = []
+                for current_block in self.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4)
+        else:
+            print("Error: Could not get the latest block.")
+
     def get_file(self,id,filename):
         for block in self.chain:
             if id + ":" +filename in block.base64_mapping:

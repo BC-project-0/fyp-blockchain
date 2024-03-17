@@ -33,10 +33,31 @@ class BullyNode(Node):
 
         try:
             with open("internal_state.json","r") as file:
-                data = json.load(file)
-                self.blockchain.unique_id_to_commitment_value_mapping = data
+                self.blockchain.unique_id_to_commitment_value_mapping = json.load(file)
         except IOError as e:
             print(f"Error reading data: {e}")
+
+        try:
+            with open("blocks.json","r") as file:
+                blocks = []
+                data = json.load(file)
+                for i in data :
+                    json_dict = i
+                    index = json_dict.get("index")
+                    leader_ip = json_dict.get("leader_ip")
+                    previous_hash = json_dict.get("previous_hash")
+                    data = json_dict.get("data")
+                    digital_signature = json_dict.get("digital_signature")
+                    user_data = json_dict.get("user_data")
+                    logs = json_dict.get("logs")
+                    timestamp = json_dict.get("timestamp")
+                    block = Block(index,leader_ip,previous_hash,data,digital_signature,user_data,logs,timestamp)
+                    block.base64_mapping = json_dict["base64_mapping"]
+                    block.file_mapping = json_dict["file_mapping"]
+                    blocks.append(block)
+                self.blockchain.chain = blocks
+        except IOError as e:
+            print(f"Error reading data :{e}")            
 
     # used to identity whether current node is contesting for leader or not
     electionProcess = False
@@ -204,7 +225,8 @@ class BullyNode(Node):
         return sig.decode("latin-1")
     
     def verify_signature(self,node,pool_data,data,signature):
-        bytes_data = json.dumps({
+        print("Verify")
+        data = json.dumps({
         "node": str(node.host),
         "pool_data": pool_data,
         "data" : data
@@ -212,13 +234,10 @@ class BullyNode(Node):
 
         pk = self.connected_keys[node.id]
         pubKey = serialization.load_pem_public_key(pk.export_key())
-        hasher = hashes.Hash(hashes.SHA256())
-        hasher.update(bytes_data)
-        digest = hasher.finalize()
         try:
             pubKey.verify(
                 signature.encode("latin-1"),
-                digest,
+                data,
                 padding.PSS(
                     mgf=padding.MGF1(hashes.SHA256()),
                     salt_length=20

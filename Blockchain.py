@@ -1,6 +1,7 @@
 import hashlib
 import json
 from utils import verify_signature
+import time
 
 class Block:
     def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
@@ -32,6 +33,21 @@ class Block:
         block_data = json.dumps(self.__dict__, sort_keys=True, indent=4)
         print(block_data)
 
+
+# Transaction contains the unique_id ,data and timestamp
+class TransactionPool:
+    def __init__(self):
+        self.pool = []
+        self.max_no_of_transaction = 2
+    
+    def add_user_data_to_pool(self,unique_id, data):
+        self.pool.append({"unique_id": unique_id, "data": data, "timestamp": int(time.time())})
+    
+    def is_limit_reached(self):
+        if(len(self.pool) >= self.max_no_of_transaction):
+            return True
+        else:
+            return False
 
 class Blockchain:
     def __init__(self):

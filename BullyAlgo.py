@@ -1,9 +1,8 @@
-import random
 import time
 from threading import Thread
 from random import choices
-from Blockchain import Blockchain
 from Blockchain import Block
+import json
 
 flag = False
 
@@ -26,11 +25,12 @@ def init_leader_election(currNode):
 
         # proceed to publish the block
         x = Thread(target=publish_block,args=(currNode,))
-        y = Thread(target=heartbeat,args= (currNode,))
+        # y = Thread(target=heartbeat,args= (currNode,))
         x.start()
-        y.start()
+        # y.start()
 
     # Clean up Code
+    currNode.pool.pool = []
     currNode.stop_leaderElection.clear()
     currNode.votes = 0
     currNode.leader = None    
@@ -68,10 +68,18 @@ def heartbeat(currNode):
         time.sleep(3)
 
 def publish_block(currNode):
-    time.sleep(15)
-    event,data = "Block Published",""
-    currNode.send_encrypted_msg(event,data)
+    pool_data = json.dumps(currNode.pool.pool)
+    data = ""
+
+    signature = currNode.get_signature(json.dumps({
+        "node": str(currNode.host),
+        "pool_data": pool_data,
+        "data" : data
+        }))
+    block_data = {"pool_data": pool_data, "signature": signature, "data": data}
+    event,node_data = "Block Published", json.dumps(block_data)
+    currNode.send_encrypted_msg(event,node_data)
     currNode.published = True
     latest_block = currNode.blockchain.get_latest_block()
-    currNode.blockchain.add_block(Block(latest_block.index + 1, str(currNode.host) + ":" +  str(currNode.port), latest_block.hash, "new block", "signature", "", str(currNode.id) + " elected" , time.time()))
+    currNode.blockchain.add_block(Block(latest_block.index + 1, str(currNode.host) + ":" +  str(currNode.port), latest_block.hash, data, signature, pool_data, [] , int(time.time())))
     print("BLOCK PUBLISHED")

@@ -27,6 +27,9 @@ class AuthenticationPayload(BaseModel):
     index: int
     pk: str
 
+class StoreUserData(BaseModel):
+    id: str
+    data: str
 
 app = FastAPI()
 
@@ -123,6 +126,14 @@ async def authentication(body: AuthenticationPayload):
     else:
         return {"message": "User is not registered"}
 
+@app.post("/data")
+async def upload(body : StoreUserData):
+    node.store_user_data(body.id,body.data)
+    event, msg = "Transaction Pool Update", "{}:{}".format(
+                body.id,body.data)
+    node.send_encrypted_msg(event, msg)
+    return {"message": "Success"}
+    
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=80 + int(id))

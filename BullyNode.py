@@ -4,11 +4,16 @@ from BullyAlgo import *
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.exceptions import InvalidSignature
 import base64
 import os
 from Blockchain import Block
 from Blockchain import Blockchain
 import json
+from Blockchain import TransactionPool
 
 
 class BullyNode(Node):
@@ -19,6 +24,7 @@ class BullyNode(Node):
         self.connections = connections
         self.probability = 50 - ((int(id)*8.1) % 50)
         self.blockchain = Blockchain()
+        self.pool = TransactionPool()
         # key pair generation
         key = RSA.generate(1024)  # keys[0] = pub key , keys[1] = pvt key
         self.keys = {"public_key": key.publickey().export_key(),
@@ -125,8 +131,12 @@ class BullyNode(Node):
         # After block is published .. New message is sent to reset leader
         if data['event'] == "Block Published":
             latest_block = self.blockchain.get_latest_block()
+            received_data = json.loads(decrypt(self,data["message"]))
+            if self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
+                print("Recevied Block Signature invalid")
+                return
             new_block = Block(latest_block.index + 1, self.leader_ip,
-                              latest_block.hash, "new block", "signature", "", self.blockchain.logs.append(str(self.leader.id) + " elected") , time.time())
+                              latest_block.hash, received_data["data"], received_data["signature"],received_data["pool_data"], [] , int(time.time()))
             self.blockchain.add_block(new_block)
             self.blockchain.logs = []
             print("Block Published by Leader")
@@ -134,6 +144,20 @@ class BullyNode(Node):
             self.stop_leaderElection.clear()
             self.published = False
             return
+    
+        if data['event'] == "Transaction Pool Update":
+            unique_id, txn = (decrypt(self,data["message"])).split(":")
+            self.store_user_data(unique_id, txn)
+            if(self.pool.is_limit_reached()):
+                init_leader_election(self)
+    
+    #Blocking
+    def store_user_data(self,unique_id,data):
+        pool = self.pool
+        pool.add_user_data_to_pool(unique_id,data)
+        # if(pool.is_limit_reached()):
+        #     x = Thread(target=init_leader_election,args=(self,))
+        #     x.start()
     
     def store_otp_state(self):
         with open("internal_state.json","w") as file:
@@ -166,3 +190,46 @@ class BullyNode(Node):
             self.send_to_node(node, data)
             # print("sent")
         return
+
+    def get_signature(self,data):
+        private_key = self.keys['private_key']
+        priKey = serialization.load_pem_private_key(private_key, password=None)
+        bytes_data = data.encode('utf-8')
+
+        hasher = hashes.Hash(hashes.SHA256())
+        hasher.update(bytes_data)
+        digest = hasher.finalize()
+        sig = priKey.sign(
+            digest,
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=20
+            ),
+            hashes.SHA256()
+        )
+        return sig.decode("latin-1")
+    
+    def verify_signature(self,node,pool_data,data,signature):
+        print("Verify")
+        data = json.dumps({
+        "node": str(node.host),
+        "pool_data": pool_data,
+        "data" : data
+        }).encode()
+
+        pk = self.connected_keys[node.id]
+        pubKey = serialization.load_pem_public_key(pk.export_key())
+        try:
+            pubKey.verify(
+                signature.encode("latin-1"),
+                data,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=20
+                ),
+                hashes.SHA256()
+            )
+            return True
+        except InvalidSignature as e:
+            print(e)
+            return False

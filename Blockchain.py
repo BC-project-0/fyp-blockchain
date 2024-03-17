@@ -2,6 +2,8 @@ import hashlib
 import json
 from utils import verify_signature
 import time
+import base64
+
 
 class Block:
     def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
@@ -55,6 +57,8 @@ class Blockchain:
         self.create_genesis_block()
         self.logs = []  # set it to empty list every 10 transactions after publishing a block
         self.unique_id_to_commitment_value_mapping = dict()
+        self.file_mapping = dict()
+        self.base64_mapping = dict()
 
     def create_genesis_block(self):
         genesis_block = Block(0, "0", "0", "Genesis Block",
@@ -113,3 +117,21 @@ class Blockchain:
             # Sync should take place
             # record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
             # self.unique_id_to_commitment_value_mapping[id] = record
+        
+    async def upload(self, id, file):
+        contents = await file.read()
+        encoded_contents = base64.b64encode(contents)
+        if id in self.file_mapping:
+            self.file_mapping[id] = [file.filename()]
+        else:
+            self.file_mapping[id].append(file.filename())
+        self.base64_mapping[id + file.filename()] = encoded_contents
+
+    def get_file(self,id,filename):
+        if id + filename in self.base64_mapping:
+            decoded_contents = base64.b64decode(self.base64_mapping[id + filename])
+            with open(filename, 'wb') as file:
+                file.write(decoded_contents)
+            return file
+        else:
+            return None

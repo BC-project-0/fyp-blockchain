@@ -75,8 +75,7 @@ class BullyNode(Node):
             if node.id > self.id and data['event'] == "Leader Election" and decrypt(self, data['message']) == "I want to be the leader":
                 print("Higher node "+str(node.id)+" to be leader")  # debug
                 self.stop_leaderElection.set()
-
-            if data['event'] == "Leader Election" and decrypt(self, data['message']) == "I want to be the leader":
+            elif data['event'] == "Leader Election" and decrypt(self, data['message']) == "I want to be the leader":
                 if self.electionProcess == False:
                     self.electionProcess = True
                     x = threading.Thread(
@@ -141,6 +140,7 @@ class BullyNode(Node):
             self.blockchain.logs = []
             print("Block Published by Leader")
             self.leader = None
+            self.electionProcess = False
             self.stop_leaderElection.clear()
             self.published = False
             return
@@ -148,16 +148,10 @@ class BullyNode(Node):
         if data['event'] == "Transaction Pool Update":
             unique_id, txn = (decrypt(self,data["message"])).split(":")
             self.store_user_data(unique_id, txn)
-            if(self.pool.is_limit_reached()):
-                init_leader_election(self)
     
-    #Blocking
     def store_user_data(self,unique_id,data):
         pool = self.pool
         pool.add_user_data_to_pool(unique_id,data)
-        # if(pool.is_limit_reached()):
-        #     x = Thread(target=init_leader_election,args=(self,))
-        #     x.start()
     
     def store_otp_state(self):
         with open("internal_state.json","w") as file:

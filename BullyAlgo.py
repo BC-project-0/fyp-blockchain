@@ -25,8 +25,8 @@ def init_leader_election(currNode):
 
         # proceed to publish the block
         x = Thread(target=publish_block,args=(currNode,))
-        # y = Thread(target=heartbeat,args= (currNode,))
         x.start()
+        # y = Thread(target=heartbeat,args= (currNode,))
         # y.start()
 
     # Clean up Code
@@ -49,11 +49,12 @@ def random_value_gen(node):
 
 # to choose whether the current node standing for leader should be elected or not
 def leader_election(currNode,senderNode,data):
+    print()
+    print("In Leader Election")
     wantToBeLeader =  random_value_gen(currNode) 
     if senderNode.id < currNode.id :
         if wantToBeLeader == True:
             init_leader_election(currNode)
-            currNode.electionProcess = False
     
     if wantToBeLeader == False:
         currNode.electionProcess = False

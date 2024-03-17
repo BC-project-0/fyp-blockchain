@@ -137,6 +137,9 @@ async def upload(body : StoreUserData):
     event, msg = "Transaction Pool Update", "{}:{}".format(
                 body.id,body.data)
     node.send_encrypted_msg(event, msg)
+    if(node.pool.is_limit_reached()):
+        x = Thread(target=init_leader_election,args=(node,))
+        x.start()
     return {"message": "Success"}
     
 

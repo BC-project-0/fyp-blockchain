@@ -26,6 +26,7 @@ class AuthenticationPayload(BaseModel):
     signature: str
     index: int
     pk: str
+    file: str
 
 class StoreUserData(BaseModel):
     id: str
@@ -113,6 +114,7 @@ async def authentication(body: AuthenticationPayload):
     signature = body.signature
     index = body.index
     pk = body.pk
+    fileName = body.file
 
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         result = Blockchain.authenticate(
@@ -122,7 +124,11 @@ async def authentication(body: AuthenticationPayload):
                 unique_id, index+1, new_commitment_value)
             node.send_encrypted_msg(event, msg)
             node.store_otp_state()
-            return {"message": result}
+            file = blockchain.get_file(unique_id, fileName)
+            if file != None:
+                return FileResponse(file)
+            else:
+                return {"message" : result}
         else:
             return {"message": result}
     else:

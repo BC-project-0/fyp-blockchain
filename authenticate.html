@@ -25,11 +25,13 @@
     <input type="file" id="fileUpload">
     <button id="submitButton">Send to API</button>
     <div id="message"></div>
+    <a id="download-link" href="#" download="my_file.txt">Download File</a>
 
     <script>
         const fileUpload = document.getElementById('fileUpload');
         const submitButton = document.getElementById('submitButton');
         const message = document.getElementById('message');
+        const downloadLink = document.getElementById('download-link');
 
         submitButton.addEventListener('click', async () => {
             // Check if file is selected
@@ -52,7 +54,8 @@
                     new_commitment_value: data["yi"],
                     index: data["i"],
                     signature: data["signature"],
-                    pk: data["pk"]
+                    pk: data["pk"],
+                    file: data["file"]
                 }
 
 

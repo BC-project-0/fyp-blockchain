@@ -58,8 +58,6 @@ def leader_election(currNode,senderNode,data):
     
     if wantToBeLeader == False:
         currNode.electionProcess = False
-    
-
 
 def heartbeat(currNode):
     while not currNode.published:

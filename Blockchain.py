@@ -58,7 +58,7 @@ class Blockchain:
     def __init__(self):
         self.chain = []
         self.create_genesis_block()
-        self.logs = []  # set it to empty list every 10 transactions after publishing a block
+        self.logs = []
         self.unique_id_to_commitment_value_mapping = dict()
 
     def create_genesis_block(self):
@@ -139,9 +139,10 @@ class Blockchain:
                     block_data = current_block.__dict__.copy()
                     block_data.pop('hash', None)
                     blocks.append(block_data)
-                json.dump(blocks, json_file, indent=4)
+                json.dump(blocks, json_file, indent=4)     
         else:
             print("Error: Could not get the latest block.")
+            return None
 
     def get_file(self,id,filename):
         for block in self.chain:

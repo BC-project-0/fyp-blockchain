@@ -90,13 +90,17 @@ async def registration(body: RegisterPayload):
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         return {"message": "User Already Exists"}
     else:
-        if (verify_initial_signature(public_key, unique_id, commitment_value, signature)):
+        if verify_initial_signature(public_key, unique_id, commitment_value, signature):
             blockchain.unique_id_to_commitment_value_mapping[unique_id] = {
                 "index": 1, "commitment_value": commitment_value, "public_key": public_key}
             event, data = "Registration", "{}:{}:{}".format(
                 unique_id, commitment_value, public_key)
             node.send_encrypted_msg(event, data)
+            node.store_user_data(unique_id,"{} registered".format(unique_id))
             node.store_otp_state()
+            if(node.pool.is_limit_reached()):
+                x = Thread(target=init_leader_election,args=(node,))
+                x.start()
             return {"message": "User Registered"}
         else:
             return {"message": "User Could not be registered"}
@@ -166,6 +170,8 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
 
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         await blockchain.upload(unique_id, uploaded_file)
+        event,data = "File Upload" + ":" + unique_id + ":" + file.filename , blockchain.get_latest_block().base64_mapping[unique_id + ":" + file.filename]
+        node.send_encrypted_msg(event,data)
         return {"message": "File uploaded"}
     else:
         return {"message": "User is not registered"}

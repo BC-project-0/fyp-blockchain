@@ -4,28 +4,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload to API</title>
+    <title>Authentication</title>
     <style>
         body {
             font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 80vh;
+            background-color: #f6f6f6;
         }
 
-        #fileUpload {
-            margin-bottom: 10px;
+        .ctn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 80vh;
         }
 
-        #message {
-            margin-top: 10px;
+        header {
+            padding: 4px;
+            text-align: left;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .sub-ctn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            gap: 10px;
+
+            border: 1px solid gray;
+            border-radius: 10px;
+        }
+
+        .text-sm {
+            width: 100%;
+            text-align: left;
+            font-size: 22px;
+        }
+
+        .input {
+            width: 100%;
+            font-size: 22px;
+        }
+
+        .submit {
+            font-size: 22px;
+        }
+
+        .message {
+            color: lightgreen;
+            margin: 1px;
         }
     </style>
 </head>
 
 <body>
-    <h1>Upload File to API</h1>
-    <input type="file" id="fileUpload">
-    <button id="submitButton">Send to API</button>
-    <div id="message"></div>
-    <a id="download-link" href="#" download="my_file.txt">Download File</a>
+    <div class="ctn">
+        <header>
+            <h1>Authentication</h1>
+        </header>
+        <main class="flex flex-1 items-center justify-center p-4">
+            <div class="sub-ctn">
+                <label for="file" class="text-sm">
+                    Upload the OTP file:
+                </label>
+                <input id="fileUpload" class="input" type="file" />
+                <button class="submit" id="submitButton">Upload</button>
+                <!-- <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; margin-top: 10px;">
+                    <p class="message">Success</p>
+                    <a>Download File</a>
+                </div> -->
+            </div>
+        </main>
+        <div></div>
+    </div>
 
     <script>
         const fileUpload = document.getElementById('fileUpload');

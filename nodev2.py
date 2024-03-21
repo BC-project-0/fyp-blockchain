@@ -157,10 +157,11 @@ async def users():
 
 @app.get("/{unique_id}/files")  # user name
 async def files(unique_id: str):
+    files = []
     for block in blockchain.chain:
         if unique_id in block.file_mapping:
-            return block.file_mapping[unique_id]
-    return []
+            files.extend(block.file_mapping[unique_id])
+    return files
 
 
 @app.post("/upload")
@@ -168,10 +169,17 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
     unique_id = id
     uploaded_file = file
 
+    if(node.blockchain.get_latest_block().index == 0):
+        publish_block(node)
+
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         await blockchain.upload(unique_id, uploaded_file)
         event,data = "File Upload" + ":" + unique_id + ":" + file.filename , blockchain.get_latest_block().base64_mapping[unique_id + ":" + file.filename]
         node.send_encrypted_msg(event,data)
+        node.store_user_data(unique_id,"{} uploaded a file".format(unique_id))
+        if(node.pool.is_limit_reached()):
+            x = Thread(target=init_leader_election,args=(node,))
+            x.start()
         return {"message": "File uploaded"}
     else:
         return {"message": "User is not registered"}
@@ -179,6 +187,10 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
 @app.get("/{id}/files/{filename}")
 async def get_file(id: str, filename: str):
     filename = blockchain.get_file(id, filename)
+    node.store_user_data(id,"{} retrieved a file".format(id))
+    if(node.pool.is_limit_reached()):
+        x = Thread(target=init_leader_election,args=(node,))
+        x.start()
     if filename != None:
         return FileResponse(filename)
     else:

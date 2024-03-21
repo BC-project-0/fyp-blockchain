@@ -152,7 +152,7 @@ class BullyNode(Node):
         if data['event'] == "Block Published":
             latest_block = self.blockchain.get_latest_block()
             received_data = json.loads(decrypt(self,data["message"]))
-            if not self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
+            if self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
                 print("Recevied Block Signature invalid")
                 return
             new_block = Block(latest_block.index + 1, self.leader_ip,
@@ -175,7 +175,7 @@ class BullyNode(Node):
             unique_id = event[1]
             filename = event[2]
             base64_data = decrypt(self,data['message'])
-            if unique_id  not in self.blockchain.get_latest_block().file_mapping:
+            if unique_id not in self.blockchain.get_latest_block().file_mapping:
                 self.blockchain.get_latest_block().file_mapping[unique_id] = [filename]
             else:
                 self.blockchain.get_latest_block().file_mapping[unique_id].append(filename)

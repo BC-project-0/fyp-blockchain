@@ -10,6 +10,7 @@ from BullyAlgo import *
 from Blockchain import Blockchain
 from starlette.responses import FileResponse
 from utils import verify_initial_signature
+from fastapi import FastAPI, Response, status
 
 
 class RegisterPayload(BaseModel):
@@ -114,7 +115,7 @@ async def authenticateFrontend():
     return FileResponse("authenticate.html")
 
 @app.post("/authenticate")
-async def authentication(body: AuthenticationPayload):
+async def authentication(body: AuthenticationPayload, response: Response):
     unique_id = body.id
     old_commitment_value = body.old_commitment_value
     new_commitment_value = body.new_commitment_value
@@ -133,12 +134,18 @@ async def authentication(body: AuthenticationPayload):
             node.store_otp_state()
             file = blockchain.get_file(unique_id, fileName)
             if file != None:
+                node.pool.add_user_data_to_pool(unique_id,"File accessed - {}".format(fileName))
+                event, msg = "Transaction Pool Update", "{}:{}".format(unique_id, "File accessed - {}".format(fileName))
+                node.send_encrypted_msg(event, msg)
                 return FileResponse(file)
             else:
+                response.status_code = status.HTTP_400_BAD_REQUEST
                 return {"message" : result}
         else:
+            response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message": result}
     else:
+        response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message": "User is not registered"}
 
 @app.post("/data")

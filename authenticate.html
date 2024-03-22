@@ -59,9 +59,20 @@
             font-size: 22px;
         }
 
-        .message {
-            color: lightgreen;
+        .messageBox {
             margin: 1px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .success {
+            color: lightgreen;
+        }
+
+        .failure {
+            color: red;
         }
     </style>
 </head>
@@ -78,10 +89,10 @@
                 </label>
                 <input id="fileUpload" class="input" type="file" />
                 <button class="submit" id="submitButton">Upload</button>
-                <!-- <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; margin-top: 10px;">
-                    <p class="message">Success</p>
-                    <a>Download File</a>
-                </div> -->
+                <div style="display: flex; flex-direction: column; gap: 2px; align-items: center; margin-top: 10px;">
+                    <p class="messageBox hidden" id="message"></p>
+                    <a id="download-link" class="hidden">Download File</a>
+                </div>
             </div>
         </main>
         <div></div>
@@ -106,36 +117,51 @@
             const reader = new FileReader();
             reader.readAsText(file);
             reader.onload = async (event) => {
-                const data = JSON.parse(event.target.result);
+                try {
+                    const data = JSON.parse(event.target.result);
 
-                const newData = {
-                    id: data["id"],
-                    old_commitment_value: data["xi"],
-                    new_commitment_value: data["yi"],
-                    index: data["i"],
-                    signature: data["signature"],
-                    pk: data["pk"],
-                    file: data["file"]
+                    const newData = {
+                        id: data["id"],
+                        old_commitment_value: data["xi"],
+                        new_commitment_value: data["yi"],
+                        index: data["i"],
+                        signature: data["signature"],
+                        pk: data["pk"],
+                        file: data["file"]
+                    }
+
+
+                    const url = window.location;
+                    const response = await fetch(`${url.origin}/authenticate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(newData)
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const downloadURL = window.URL.createObjectURL(blob)
+                        downloadLink.href = downloadURL;
+                        downloadLink.classList.remove("hidden")
+                        message.textContent = "Success";
+                        message.classList.add("green");
+                        message.classList.remove('hidden')
+                    } else {
+                        const errorText = await response.text();
+                        message.textContent = `Error: ${errorText}`;
+                        downloadLink.classList.add("hidden")
+                        message.classList.add("failure");
+                        message.classList.remove('hidden')
+                    }
+                } catch (err) {
+                    message.textContent = `Could not parse File`;
+                    message.classList.add("failure");
+                    message.classList.remove('hidden')
                 }
 
 
-                const url = window.location;
-                const response = await fetch(`${url.origin}/authenticate`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(newData)
-                });
-
-                if (response.ok) {
-                    const serverMessage = await response.json();
-                    console.log(serverMessage["message"])
-                    message.textContent = `Message from server: ${serverMessage["message"]}`;
-                } else {
-                    const errorText = await response.text();
-                    message.textContent = `Error: ${errorText}`;
-                }
             };
 
             reader.onerror = (error) => {

@@ -8,12 +8,15 @@ flag = False
 
 # An event triggers the init_leader_election
 def init_leader_election(currNode):
+    if currNode.is_leader_election_happening.is_set():
+        return
+    currNode.is_leader_election_happening.set()
     print()
     print("I want to be the leader")
     if currNode.leader == None:  # Broadcasting message to other nodes stating this nodes wants to stand for leadere
         event,data = "Leader Election","I want to be the leader"
         currNode.send_encrypted_msg(event,data)
-    time.sleep(15)  # waits for 15 seconds for replies
+    time.sleep(5)  # waits for 15 seconds for replies
 
     # If some higher node wants to be leader then stop_leaderElection is set to True
     if not currNode.stop_leaderElection.is_set():        
@@ -32,6 +35,7 @@ def init_leader_election(currNode):
     # Clean up Code
     currNode.pool.pool = []
     currNode.stop_leaderElection.clear()
+    currNode.is_leader_election_happening.clear()
     currNode.votes = 0
     currNode.leader = None    
     currNode.electionProcess = False

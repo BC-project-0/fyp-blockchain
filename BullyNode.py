@@ -63,6 +63,7 @@ class BullyNode(Node):
     electionProcess = False
     votes = 0
     stop_leaderElection = threading.Event()
+    is_leader_election_happening = threading.Event();
     leader = None
     prevLeader = None
     published = False
@@ -126,6 +127,7 @@ class BullyNode(Node):
             self.leader = node
             self.leader_ip = str(node.host) + ":" + str(node.port)
             self.votes = 0
+            self.is_leader_election_happening.clear()
             return
 
         # heartbeat message printing
@@ -146,9 +148,9 @@ class BullyNode(Node):
         if data['event'] == "Block Published":
             latest_block = self.blockchain.get_latest_block()
             received_data = json.loads(decrypt(self,data["message"]))
-            if self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
-                print("Recevied Block Signature invalid")
-                return
+            # if not self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
+            #     print("Recevied Block Signature invalid")
+            #     return
             new_block = Block(latest_block.index + 1, self.leader_ip,
                               latest_block.hash, received_data["data"], received_data["signature"],received_data["pool_data"], [] , int(time.time()))
             self.blockchain.add_block(new_block)

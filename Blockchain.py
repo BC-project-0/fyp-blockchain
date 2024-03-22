@@ -44,7 +44,7 @@ class TransactionPool:
     def __init__(self):
         self.pool = []
         self.max_no_of_transaction = 3
-    
+   
     def add_user_data_to_pool(self,unique_id, data):
         self.pool.append({"unique_id": unique_id, "data": data, "timestamp": int(time.time())})
     
@@ -58,7 +58,6 @@ class Blockchain:
     def __init__(self):
         self.chain = []
         self.create_genesis_block()
-        self.logs = []
         self.unique_id_to_commitment_value_mapping = dict()
 
     def create_genesis_block(self):

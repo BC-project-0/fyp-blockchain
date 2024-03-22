@@ -43,7 +43,7 @@ class Block:
 class TransactionPool:
     def __init__(self):
         self.pool = []
-        self.max_no_of_transaction = 2
+        self.max_no_of_transaction = 3
     
     def add_user_data_to_pool(self,unique_id, data):
         self.pool.append({"unique_id": unique_id, "data": data, "timestamp": int(time.time())})

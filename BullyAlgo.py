@@ -65,7 +65,7 @@ def heartbeat(currNode):
         event,data = "Heartbeat","Heartbeat from leader -> " + str(currNode.host) + ":" +  str(currNode.port)
         currNode.send_encrypted_msg(event,data)
         time.sleep(3)
-
+        
 def publish_block(currNode):
     pool_data = json.dumps(currNode.pool.pool)
     data = ""

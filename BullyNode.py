@@ -132,12 +132,6 @@ class BullyNode(Node):
         if data["event"] == "Heartbeat":
             print(decrypt(self, data["message"]))
             return
-        
-        if data["event"] == "Registration":
-            unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
-            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 1 , "commitment_value" : commitment_value , "public_key" : public_key}
-            print("User Registered")
-            return
             
         if data["event"] == "Record Update":
             unique_id , index , commitment_value = (decrypt(self,data["message"])).split(":")
@@ -164,6 +158,20 @@ class BullyNode(Node):
             self.electionProcess = False
             self.stop_leaderElection.clear()
             self.published = False
+            with open("blocks.json", "w") as json_file:
+                blocks = []
+                for current_block in self.blockchain.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4)
+            return
+        
+        if data["event"] == "Registration":
+            unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
+            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 1 , "commitment_value" : commitment_value , "public_key" : public_key}
+            print("User Registered")
             return
     
         if data['event'] == "Transaction Pool Update":
@@ -180,6 +188,7 @@ class BullyNode(Node):
             else:
                 self.blockchain.get_latest_block().file_mapping[unique_id].append(filename)
             self.blockchain.get_latest_block().base64_mapping[unique_id + ":" + filename] = base64_data
+            self.blockchain.get_latest_block().hash = self.blockchain.get_latest_block().calculate_hash()
 
     def store_user_data(self,unique_id,data):
         pool = self.pool

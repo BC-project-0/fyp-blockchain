@@ -9,7 +9,7 @@ from BullyNode import BullyNode
 from BullyAlgo import *
 from Blockchain import Blockchain
 from starlette.responses import FileResponse
-from utils import verify_initial_signature
+from utils import verify_initial_signature, generate_key_pair
 from fastapi import FastAPI, Response, status
 
 
@@ -50,7 +50,7 @@ key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8
 print('Node '+id)
 node = BullyNode("127.0.0.1", 8000+int(id), id=id, connections=connections)
 node.start()
-time.sleep(5)
+time.sleep(10)
 
 pk = open("pk"+str(node.id)+".pem", "wb")
 pk.write(node.keys["public_key"])
@@ -81,6 +81,11 @@ async def get_blockchain():
 async def stop():
     node.stop()
     return {"message": "Node Stopped"}
+
+@app.get("/key-pair")
+async def getKeyPair():
+    privateKey, publicKey = generate_key_pair();
+    return {"privateKey" : privateKey, "publicKey": publicKey}
 
 
 @app.post("/register")

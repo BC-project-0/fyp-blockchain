@@ -1,4 +1,5 @@
 internal_state.json
+blocks.json
 ipaddr.txt
 temp*.bin
 temp.bin

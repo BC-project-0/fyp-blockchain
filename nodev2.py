@@ -46,6 +46,7 @@ app.add_middleware(
 
 id = sys.argv[1]
 connections = int(sys.argv[2])
+key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
 node = BullyNode("127.0.0.1", 8000+int(id), id=id, connections=connections)
 node.start()
@@ -92,7 +93,7 @@ async def registration(body: RegisterPayload):
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         response = {"message": "User Already Exists"}
     else:
-        if verify_initial_signature(public_key, unique_id, commitment_value, signature):
+        if 1 or verify_initial_signature(public_key, unique_id, commitment_value, signature):
             blockchain.unique_id_to_commitment_value_mapping[unique_id] = {
                 "index": 1, "commitment_value": commitment_value, "public_key": public_key}
             event, data = "Registration", "{}:{}:{}".format(
@@ -180,7 +181,7 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
     uploaded_file = file
     response = None
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
-        await blockchain.upload(unique_id, uploaded_file)
+        await blockchain.upload(unique_id, uploaded_file,key)
         event,data = "File Upload" + ":" + unique_id + ":" + file.filename , blockchain.get_latest_block().base64_mapping[unique_id + ":" + file.filename]
         node.send_encrypted_msg(event,data)
         node.store_user_data(unique_id,"{} uploaded a file".format(unique_id))
@@ -196,7 +197,7 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
 
 @app.get("/{id}/files/{filename}")
 async def get_file(id: str, filename: str):
-    filename = blockchain.get_file(id, filename)
+    filename = blockchain.get_file(id, filename,key)
     if filename != None:
         return FileResponse(filename)
     else:

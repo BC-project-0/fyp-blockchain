@@ -3,6 +3,8 @@ import json
 from utils import verify_signature
 import time
 import base64
+from base64 import b64encode,b64decode
+from Crypto.Cipher import ChaCha20_Poly1305
 
 class Block:
     def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
@@ -118,16 +120,23 @@ class Blockchain:
             # record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
             # self.unique_id_to_commitment_value_mapping[id] = record
         
-    async def upload(self, id, file):
+    async def upload(self, id, file, key):
+        header = b"header"
+        cipher = ChaCha20_Poly1305.new(key=key)
+        cipher.update(header)
         contents = await file.read()
-        encoded_contents = base64.b64encode(contents).decode('utf-8')  # Decode bytes to string
+        encoded_contents = base64.b64encode(contents)  # Decode bytes to string
+        ciphertext,tag = cipher.encrypt_and_digest(encoded_contents)
+        jk = [ 'nonce', 'header', 'ciphertext', 'tag' ]
+        jv = [ b64encode(x).decode('utf-8') for x in (cipher.nonce, header, ciphertext, tag) ]
+        result = json.dumps(dict(zip(jk, jv)))
         block = self.get_latest_block()
         if block is not None:
             if id not in block.file_mapping:
                 block.file_mapping[id] = [file.filename]
             else:
                 block.file_mapping[id].append(file.filename)
-            block.base64_mapping[id + ":" + file.filename] = encoded_contents
+            block.base64_mapping[id + ":" + file.filename] = result
             block.hash = block.calculate_hash()
 
             # Serialize the blockchain to JSON and write to file
@@ -143,10 +152,16 @@ class Blockchain:
             print("Error: Could not get the latest block.")
             return None
 
-    def get_file(self,id,filename):
+    def get_file(self,id,filename, key):
         for block in self.chain:
             if id + ":" +filename in block.base64_mapping:
-                decoded_contents = base64.b64decode(block.base64_mapping[id + ":" + filename])
+                b64 = json.loads(block.base64_mapping[id+":"+filename])
+                jk = [ 'nonce', 'header', 'ciphertext', 'tag' ]
+                jv = {k:b64decode(b64[k]) for k in jk}
+                cipher = ChaCha20_Poly1305.new(key=key, nonce=jv['nonce'])
+                cipher.update(jv['header'])
+                decrypted_contents = cipher.decrypt_and_verify(jv['ciphertext'], jv['tag'])
+                decoded_contents = base64.b64decode(decrypted_contents)
                 print("File Found !!!!")
                 with open(filename, 'wb') as file:
                     file.write(decoded_contents)

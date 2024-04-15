@@ -32,13 +32,13 @@ class BullyNode(Node):
         self.connected_keys = {}
 
         try:
-            with open("internal_state.json","r") as file:
+            with open("./data/internal_state.json","r") as file:
                 self.blockchain.unique_id_to_commitment_value_mapping = json.load(file)
         except IOError as e:
             print(f"Error reading data: {e}")
 
         try:
-            with open("blocks.json","r") as file:
+            with open("./data/blocks.json","r") as file:
                 blocks = []
                 data = json.load(file)
                 for i in data :
@@ -160,7 +160,7 @@ class BullyNode(Node):
             self.electionProcess = False
             self.stop_leaderElection.clear()
             self.published = False
-            with open("blocks.json", "w") as json_file:
+            with open("./data/blocks.json", "w") as json_file:
                 blocks = []
                 for current_block in self.blockchain.chain:
                     # Exclude hash from serialization
@@ -197,7 +197,7 @@ class BullyNode(Node):
         pool.add_user_data_to_pool(unique_id,data)
     
     def store_otp_state(self):
-        with open("internal_state.json","w") as file:
+        with open("./data/internal_state.json","w") as file:
             json.dump(self.blockchain.unique_id_to_commitment_value_mapping,
                           file,indent=4) 
 

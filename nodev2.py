@@ -2,7 +2,6 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
-import sys
 import time
 import os
 from BullyNode import BullyNode
@@ -12,6 +11,7 @@ from starlette.responses import FileResponse
 from utils import verify_initial_signature, generate_key_pair
 from fastapi import FastAPI, Response, status
 
+import os
 
 class RegisterPayload(BaseModel):
     id: str
@@ -44,8 +44,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-id = sys.argv[1]
-connections = int(sys.argv[2])
+# id = sys.argv[1]
+# connections = int(sys.argv[2])
+id = os.environ.get("NODE_ID")
+connections = 1
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
 node = BullyNode("127.0.0.1", 8000+int(id), id=id, connections=connections)
@@ -138,7 +140,7 @@ async def authentication(body: AuthenticationPayload, response: Response):
                 unique_id, index+1, new_commitment_value)
             node.send_encrypted_msg(event, msg)
             node.store_otp_state()
-            file = blockchain.get_file(unique_id, fileName)
+            file = blockchain.get_file(unique_id, fileName,key)
             if file != None:
                 node.pool.add_user_data_to_pool(unique_id,"File accessed - {}".format(fileName))
                 event, msg = "Transaction Pool Update", "{}:{}".format(unique_id, "File accessed - {}".format(fileName))
@@ -209,4 +211,4 @@ async def get_file(id: str, filename: str):
         return {"message": "File retrieval failed"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=80 + int(id))
+    uvicorn.run(app, host="0.0.0.0", port=80)

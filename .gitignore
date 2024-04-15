@@ -1,5 +1,5 @@
-internal_state.json
-blocks.json
+/data/internal_state.json
+/data/blocks.json
 ipaddr.txt
 temp*.bin
 temp.bin

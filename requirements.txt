@@ -2,3 +2,5 @@ fastapi
 cryptography
 pycryptodome
 p2pnetwork
+uvicorn
+python-multipart

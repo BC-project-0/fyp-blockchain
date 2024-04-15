@@ -1,0 +1,10 @@
+internal_state.json
+blocks.json
+ipaddr.txt
+temp*.bin
+temp.bin
+.vscode
+__pycache__/
+encrypted_data.bin
+/data/blocks.json
+/data/internal_state.json

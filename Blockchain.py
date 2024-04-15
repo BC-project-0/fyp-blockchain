@@ -140,7 +140,7 @@ class Blockchain:
             block.hash = block.calculate_hash()
 
             # Serialize the blockchain to JSON and write to file
-            with open("blocks.json", "w") as json_file:
+            with open("./data/blocks.json", "w") as json_file:
                 blocks = []
                 for current_block in self.chain:
                     # Exclude hash from serialization

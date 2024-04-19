@@ -1,6 +1,5 @@
 /data/internal_state.json
 /data/blocks.json
-ipaddr.txt
 temp*.bin
 temp.bin
 .vscode

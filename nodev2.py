@@ -10,6 +10,7 @@ from Blockchain import Blockchain
 from starlette.responses import FileResponse
 from utils import verify_initial_signature, generate_key_pair
 from fastapi import FastAPI, Response, status
+import sys
 
 import os
 
@@ -44,15 +45,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def get_node_list():    
+    with open("./address/ipaddr.txt", "r") as file:
+        lines = [line.rstrip('\n') for line in file]
+    
+    return lines
+
+# FOR CMD LINE
 # id = sys.argv[1]
-# connections = int(sys.argv[2])
+
+# FOR DOCKER COMPOSE
 id = os.environ.get("NODE_ID")
-connections = 1
+
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
-node = BullyNode("127.0.0.1", 8000+int(id), id=id, connections=connections)
+node = BullyNode("127.0.0.1", 8000+int(id), id=id)
 node.start()
-time.sleep(10)
+time.sleep(5)
 
 pk = open("pk"+str(node.id)+".pem", "wb")
 pk.write(node.keys["public_key"])
@@ -64,10 +73,25 @@ os.remove("pk"+str(node.id)+".pem")
 
 blockchain = node.blockchain
 
-for i in range(connections):
-    if i != id:
-        node.connect_with_node('127.0.0.1', 8000+i)
+node_ip = get_node_list()
+    
+for i in node_ip:
+    addr = i.split(":")
+    result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
+    print(" Result:",result)
 
+
+# connections = 5
+# for i in range(connections):
+#     if i != id:
+#         print("Connecting to "+ "127.0.0.1:"+ str(8000 + i))
+#         result = node.connect_with_node('127.0.0.1',8000 + i)
+#         print("Result:",result)
+
+@app.get("/nodes")
+async def get_nodes():
+    print(node.all_nodes)
+    return {"message": "done"}
 
 @app.get("/")
 async def root():
@@ -211,4 +235,4 @@ async def get_file(id: str, filename: str):
         return {"message": "File retrieval failed"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=81)

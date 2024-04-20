@@ -11,8 +11,10 @@ from starlette.responses import FileResponse
 from utils import verify_initial_signature, generate_key_pair
 from fastapi import FastAPI, Response, status
 import sys
-
+import threading
+import psutil
 import os
+import datetime
 
 class RegisterPayload(BaseModel):
     id: str
@@ -45,17 +47,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+id = sys.argv[1]
+
+rows = []
+
+def benchmark():
+    try:
+        process = psutil.Process(os.getpid())
+        while True:
+            cpu_usage = process.cpu_percent(interval=1)
+            memory_usage = process.memory_info().rss / (1024 * 1024)
+            print("CPU: {} , RAM: {} MB".format(cpu_usage,memory_usage))
+            rows.append([cpu_usage,memory_usage,datetime.datetime.now()])
+    except psutil.NoSuchProcess:
+        print(f"Process with PID {os.getpid()} not found.")
+        exit(1)
+
+
 def get_node_list():    
     with open("./address/ipaddr.txt", "r") as file:
         lines = [line.rstrip('\n') for line in file]
     
     return lines
 
-# FOR CMD LINE
-# id = sys.argv[1]
 
-# FOR DOCKER COMPOSE
-id = os.environ.get("NODE_ID")
+x = threading.Thread(target=benchmark)
+x.start()
+
 
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
@@ -75,18 +94,18 @@ blockchain = node.blockchain
 
 node_ip = get_node_list()
     
-for i in node_ip:
-    addr = i.split(":")
-    result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
-    print(" Result:",result)
+# for i in node_ip:
+#     addr = i.split(":")
+#     result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
+#     print(" Result:",result)
 
 
-# connections = 5
-# for i in range(connections):
-#     if i != id:
-#         print("Connecting to "+ "127.0.0.1:"+ str(8000 + i))
-#         result = node.connect_with_node('127.0.0.1',8000 + i)
-#         print("Result:",result)
+connections = 5
+for i in range(connections):
+    if i != id:
+        print("Connecting to "+ "127.0.0.1:"+ str(8000 + i))
+        result = node.connect_with_node('127.0.0.1',8000 + i)
+        print("Result:",result)
 
 @app.get("/nodes")
 async def get_nodes():
@@ -106,7 +125,7 @@ async def get_blockchain():
 @app.get("/stop")
 async def stop():
     node.stop()
-    return {"message": "Node Stopped"}
+    return {"message": rows}
 
 @app.get("/key-pair")
 async def getKeyPair():
@@ -124,7 +143,7 @@ async def registration(body: RegisterPayload):
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
         response = {"message": "User Already Exists"}
     else:
-        if 1 or verify_initial_signature(public_key, unique_id, commitment_value, signature):
+        if verify_initial_signature(public_key, unique_id, commitment_value, signature):
             blockchain.unique_id_to_commitment_value_mapping[unique_id] = {
                 "index": 1, "commitment_value": commitment_value, "public_key": public_key}
             event, data = "Registration", "{}:{}:{}".format(
@@ -235,4 +254,5 @@ async def get_file(id: str, filename: str):
         return {"message": "File retrieval failed"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=81)
+    uvicorn.run(app, host="0.0.0.0", port=80 + int(id))
+        

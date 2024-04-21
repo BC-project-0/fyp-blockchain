@@ -110,14 +110,43 @@ class BullyNode(Node):
             pk = open("pk"+str(self.id)+".pem", "wb")
             pk.write(self.keys["public_key"])
             pk.close()
+            blocks = []
+            for current_block in self.blockchain.chain:
+                block_data = current_block.__dict__.copy()
+                block_data.pop('hash', None)
+                blocks.append(block_data)
+
+            blockchain = json.dumps(blocks, indent=4)
     # Broadcasting public keys to all other nodes connected with us
             key_msg = {"event": "Key Exchange Reply",
-                       "message": open("pk"+str(self.id)+".pem").read()}
+                       "message": open("pk"+str(self.id)+".pem").read(),
+                       "blockchain": blockchain}
             self.send_to_node(node, key_msg)
             os.remove("pk"+str(self.id)+".pem")
 
         if data['event'] == "Key Exchange Reply":
+            print("Reply In")
             self.connected_keys[node.id] = (RSA.import_key(data["message"]))
+            blocks = []
+            blocksData = json.loads(data['blockchain'])
+            for i in blocksData :
+                json_dict = i
+                index = json_dict.get("index")
+                leader_ip = json_dict.get("leader_ip")
+                previous_hash = json_dict.get("previous_hash")
+                data = json_dict.get("data")
+                digital_signature = json_dict.get("digital_signature")
+                user_data = json_dict.get("user_data")
+                logs = json_dict.get("logs")
+                timestamp = json_dict.get("timestamp")
+                block = Block(index,leader_ip,previous_hash,data,digital_signature,user_data,logs,timestamp)
+                block.base64_mapping = json_dict["base64_mapping"]
+                block.file_mapping = json_dict["file_mapping"]
+                blocks.append(block)
+            if (len(blocks) > len(self.blockchain.chain)):
+                self.blockchain.chain = blocks
+                print("Synced")
+            print("Reply OUT")
             return
 
         # Once leader is set then other nodes's response are invalid

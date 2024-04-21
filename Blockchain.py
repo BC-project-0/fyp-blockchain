@@ -120,7 +120,7 @@ class Blockchain:
             # record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
             # self.unique_id_to_commitment_value_mapping[id] = record
         
-    async def upload(self, id, file, key):
+    async def upload(self, id, file, key, node_id):
         header = b"header"
         cipher = ChaCha20_Poly1305.new(key=key)
         cipher.update(header)
@@ -140,6 +140,14 @@ class Blockchain:
             block.hash = block.calculate_hash()
 
             # Serialize the blockchain to JSON and write to file
+            with open(f"blocks-{str(node_id)}.json", "w") as json_file:
+                blocks = []
+                for current_block in self.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4) 
             with open("./data/blocks.json", "w") as json_file:
                 blocks = []
                 for current_block in self.chain:

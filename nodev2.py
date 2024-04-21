@@ -53,6 +53,7 @@ def get_node_list():
 
 # FOR CMD LINE
 id = sys.argv[1]
+NODE_ID = sys.argv[1]
 
 # FOR DOCKER COMPOSE
 # id = os.environ.get("NODE_ID")
@@ -99,7 +100,7 @@ async def root():
 
 @app.get("/blockchain")
 async def get_blockchain():
-    return blockchain
+    return blockchain.chain
 
 
 @app.get("/stop")
@@ -211,7 +212,7 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
     uploaded_file = file
     response = None
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
-        await blockchain.upload(unique_id, uploaded_file,key)
+        await blockchain.upload(unique_id, uploaded_file,key, NODE_ID)
         event,data = "File Upload" + ":" + unique_id + ":" + file.filename , blockchain.get_latest_block().base64_mapping[unique_id + ":" + file.filename]
         node.send_encrypted_msg(event,data)
         node.store_user_data(unique_id,"{} uploaded a file".format(unique_id))

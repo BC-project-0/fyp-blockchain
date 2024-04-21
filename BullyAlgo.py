@@ -86,6 +86,14 @@ def publish_block(currNode):
     latest_block = currNode.blockchain.get_latest_block()
     currNode.blockchain.add_block(Block(latest_block.index + 1, str(currNode.host) + ":" +  str(currNode.port), latest_block.hash, data, signature, pool_data, [] , int(time.time())))
     print("BLOCK PUBLISHED")
+    with open(f"blocks-{str(currNode.id)}.json","w") as json_file:
+        blocks = []
+        for current_block in currNode.blockchain.chain:
+                    # Exclude hash from serialization
+            block_data = current_block.__dict__.copy()
+            block_data.pop('hash', None)
+            blocks.append(block_data)
+        json.dump(blocks, json_file, indent=4)
     with open("./data/blocks.json", "w") as json_file:
         blocks = []
         for current_block in currNode.blockchain.chain:

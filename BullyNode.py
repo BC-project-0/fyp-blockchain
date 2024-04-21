@@ -38,7 +38,7 @@ class BullyNode(Node):
             print(f"Error reading data: {e}")
 
         try:
-            with open("./data/blocks.json","r") as file:
+            with open(f"blocks-{str(self.id)}.json","r") as file:
                 blocks = []
                 data = json.load(file)
                 for i in data :
@@ -125,7 +125,6 @@ class BullyNode(Node):
             os.remove("pk"+str(self.id)+".pem")
 
         if data['event'] == "Key Exchange Reply":
-            print("Reply In")
             self.connected_keys[node.id] = (RSA.import_key(data["message"]))
             blocks = []
             blocksData = json.loads(data['blockchain'])
@@ -143,10 +142,17 @@ class BullyNode(Node):
                 block.base64_mapping = json_dict["base64_mapping"]
                 block.file_mapping = json_dict["file_mapping"]
                 blocks.append(block)
+            
             if (len(blocks) > len(self.blockchain.chain)):
                 self.blockchain.chain = blocks
-                print("Synced")
-            print("Reply OUT")
+                with open(f"blocks-{str(self.id)}.json", "w") as json_file:
+                    storeBlocks = []
+                    for current_block in self.blockchain.chain:
+                        # Exclude hash from serialization
+                        block_data = current_block.__dict__.copy()
+                        block_data.pop('hash', None)
+                        storeBlocks.append(block_data)
+                    json.dump(storeBlocks, json_file, indent=4) 
             return
 
         # Once leader is set then other nodes's response are invalid
@@ -189,6 +195,14 @@ class BullyNode(Node):
             self.electionProcess = False
             self.stop_leaderElection.clear()
             self.published = False
+            with open(f"blocks-{str(self.id)}.json", "w") as json_file:
+                blocks = []
+                for current_block in self.blockchain.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4)
             with open("./data/blocks.json", "w") as json_file:
                 blocks = []
                 for current_block in self.blockchain.chain:

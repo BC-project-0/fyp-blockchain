@@ -11,8 +11,8 @@ from starlette.responses import FileResponse
 from utils import verify_initial_signature, generate_key_pair
 from fastapi import FastAPI, Response, status
 import sys
-
 import os
+
 
 class RegisterPayload(BaseModel):
     id: str
@@ -30,6 +30,7 @@ class AuthenticationPayload(BaseModel):
     pk: str
     file: str
 
+
 class StoreUserData(BaseModel):
     id: str
     data: str
@@ -45,17 +46,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_node_list():    
+
+id = sys.argv[1]
+
+
+def get_node_list():
     with open("./address/ipaddr.txt", "r") as file:
         lines = [line.rstrip('\n') for line in file]
-    
+
     return lines
 
-# FOR CMD LINE
-# id = sys.argv[1]
-
-# FOR DOCKER COMPOSE
-id = os.environ.get("NODE_ID")
 
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
@@ -67,31 +67,33 @@ pk = open("pk"+str(node.id)+".pem", "wb")
 pk.write(node.keys["public_key"])
 pk.close()
 key_msg = {"event": "Key Exchange Request",
-           "message": open("pk"+str(node.id)+".pem").read()}
+           "message": open("pk"+str(node.id)+".pem").read(), "blocks": node.blockchain.chain}
 node.send_to_nodes(key_msg)
 os.remove("pk"+str(node.id)+".pem")
 
 blockchain = node.blockchain
 
 node_ip = get_node_list()
-    
-for i in node_ip:
-    addr = i.split(":")
-    result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
-    print(" Result:",result)
+
+# for i in node_ip:
+#     addr = i.split(":")
+#     result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
+#     print(" Result:",result)
 
 
-# connections = 5
-# for i in range(connections):
-#     if i != id:
-#         print("Connecting to "+ "127.0.0.1:"+ str(8000 + i))
-#         result = node.connect_with_node('127.0.0.1',8000 + i)
-#         print("Result:",result)
+connections = 5
+for i in range(connections):
+    if i != id:
+        print("Connecting to " + "127.0.0.1:" + str(8000 + i))
+        result = node.connect_with_node('127.0.0.1', 8000 + i)
+        print("Result:", result)
+
 
 @app.get("/nodes")
 async def get_nodes():
     print(node.all_nodes)
     return {"message": "done"}
+
 
 @app.get("/")
 async def root():
@@ -106,12 +108,13 @@ async def get_blockchain():
 @app.get("/stop")
 async def stop():
     node.stop()
-    return {"message": "Node Stopped"}
+    return {"message": "Node stopped"}
+
 
 @app.get("/key-pair")
 async def getKeyPair():
-    privateKey, publicKey = generate_key_pair();
-    return {"privateKey" : privateKey, "publicKey": publicKey}
+    privateKey, publicKey = generate_key_pair()
+    return {"privateKey": privateKey, "publicKey": publicKey}
 
 
 @app.post("/register")
@@ -130,21 +133,22 @@ async def registration(body: RegisterPayload):
             event, data = "Registration", "{}:{}:{}".format(
                 unique_id, commitment_value, public_key)
             node.send_encrypted_msg(event, data)
-            node.store_user_data(unique_id,"{} registered".format(unique_id))
+            node.store_user_data(unique_id, "{} registered".format(unique_id))
             node.store_otp_state()
-            if(node.pool.is_limit_reached()):
-                x = Thread(target=init_leader_election,args=(node,))
+            if (node.pool.is_limit_reached()):
+                x = Thread(target=init_leader_election, args=(node,))
                 x.start()
-            response =  {"message": "User Registered"} 
+            response = {"message": "User Registered"}
     if blockchain.get_latest_block().index == 0:
-        x = Thread(target=init_leader_election,args=(node,))
-        x.start()               
+        x = Thread(target=init_leader_election, args=(node,))
+        x.start()
     return response
 
 
 @app.get("/authenticate")
 async def authenticateFrontend():
     return FileResponse("authenticate.html")
+
 
 @app.post("/authenticate")
 async def authentication(body: AuthenticationPayload, response: Response):
@@ -164,15 +168,17 @@ async def authentication(body: AuthenticationPayload, response: Response):
                 unique_id, index+1, new_commitment_value)
             node.send_encrypted_msg(event, msg)
             node.store_otp_state()
-            file = blockchain.get_file(unique_id, fileName,key)
+            file = blockchain.get_file(unique_id, fileName, key)
             if file != None:
-                node.pool.add_user_data_to_pool(unique_id,"File accessed - {}".format(fileName))
-                event, msg = "Transaction Pool Update", "{}:{}".format(unique_id, "File accessed - {}".format(fileName))
+                node.pool.add_user_data_to_pool(
+                    unique_id, "File accessed - {}".format(fileName))
+                event, msg = "Transaction Pool Update", "{}:{}".format(
+                    unique_id, "File accessed - {}".format(fileName))
                 node.send_encrypted_msg(event, msg)
                 return FileResponse(file)
             else:
                 response.status_code = status.HTTP_400_BAD_REQUEST
-                return {"message" : result}
+                return {"message": result}
         else:
             response.status_code = status.HTTP_400_BAD_REQUEST
             return {"message": result}
@@ -180,14 +186,15 @@ async def authentication(body: AuthenticationPayload, response: Response):
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"message": "User is not registered"}
 
+
 @app.post("/data")
 async def upload(body: StoreUserData):
     node.store_user_data(body.id, body.data)
     event, msg = "Transaction Pool Update", "{}:{}".format(
         body.id, body.data)
     node.send_encrypted_msg(event, msg)
-    if(node.pool.is_limit_reached()):
-        x = Thread(target=init_leader_election,args=(node,))
+    if (node.pool.is_limit_reached()):
+        x = Thread(target=init_leader_election, args=(node,))
         x.start()
     return {"message": "Success"}
 
@@ -212,27 +219,31 @@ async def upload(file: UploadFile = File(...), id: str = Form(...)):
     uploaded_file = file
     response = None
     if unique_id in blockchain.unique_id_to_commitment_value_mapping:
-        await blockchain.upload(unique_id, uploaded_file,key)
-        event,data = "File Upload" + ":" + unique_id + ":" + file.filename , blockchain.get_latest_block().base64_mapping[unique_id + ":" + file.filename]
-        node.send_encrypted_msg(event,data)
-        node.store_user_data(unique_id,"{} uploaded a file".format(unique_id))
+        await blockchain.upload(unique_id, uploaded_file, key)
+        event, data = "File Upload" + ":" + unique_id + ":" + \
+            file.filename, blockchain.get_latest_block(
+            ).base64_mapping[unique_id + ":" + file.filename]
+        node.send_encrypted_msg(event, data)
+        node.store_user_data(unique_id, "{} uploaded a file".format(unique_id))
         response = {"message": "File uploaded"}
     else:
         response = {"message": "User is not registered"}
-    event, msg = "Transaction Pool Update", "{}:{}".format(unique_id, "{} uploaded a file".format(unique_id))
+    event, msg = "Transaction Pool Update", "{}:{}".format(
+        unique_id, "{} uploaded a file".format(unique_id))
     node.send_encrypted_msg(event, msg)
-    if(node.pool.is_limit_reached()):
-        x = Thread(target=init_leader_election,args=(node,))
+    if (node.pool.is_limit_reached()):
+        x = Thread(target=init_leader_election, args=(node,))
         x.start()
     return response
 
+
 @app.get("/{id}/files/{filename}")
 async def get_file(id: str, filename: str):
-    filename = blockchain.get_file(id, filename,key)
+    filename = blockchain.get_file(id, filename, key)
     if filename != None:
         return FileResponse(filename)
     else:
         return {"message": "File retrieval failed"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=81)
+    uvicorn.run(app, host="0.0.0.0", port=80 + int(id))

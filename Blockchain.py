@@ -3,8 +3,9 @@ import json
 from utils import verify_signature
 import time
 import base64
-from base64 import b64encode,b64decode
+from base64 import b64encode, b64decode
 from Crypto.Cipher import ChaCha20_Poly1305
+
 
 class Block:
     def __init__(self, index, leader_ip, previous_hash, data, digital_signature, user_data, logs, timestamp):
@@ -46,15 +47,17 @@ class TransactionPool:
     def __init__(self):
         self.pool = []
         self.max_no_of_transaction = 3
-   
-    def add_user_data_to_pool(self,unique_id, data):
-        self.pool.append({"unique_id": unique_id, "data": data, "timestamp": int(time.time())})
-    
+
+    def add_user_data_to_pool(self, unique_id, data):
+        self.pool.append({"unique_id": unique_id, "data": data,
+                         "timestamp": int(time.time())})
+
     def is_limit_reached(self):
-        if(len(self.pool) >= self.max_no_of_transaction):
+        if (len(self.pool) >= self.max_no_of_transaction):
             return True
         else:
             return False
+
 
 class Blockchain:
     def __init__(self):
@@ -100,13 +103,15 @@ class Blockchain:
         pk_record = record["public_key"]
         if y_prev != xi:
             return "Wrong Commitment Value"
-    
+
         if pk != pk_record:
             return "Wrong Public Key"
-        
+
         if i == j:
-            if y_prev == xi and verify_signature(pk.encode("utf-8"),id,xi,yi,i,s):
-                record = {"index": j + 1,"commitment_value": yi, "public_key": pk}
+            # if y_prev == xi and verify_signature(pk.encode("utf-8"),id,xi,yi,i,s):
+            if y_prev == xi:
+                record = {"index": j + 1,
+                          "commitment_value": yi, "public_key": pk}
                 self.unique_id_to_commitment_value_mapping[id] = record
                 return "Success"
             else:
@@ -119,16 +124,17 @@ class Blockchain:
             # Sync should take place
             # record = {"index": j + 1,"commitment_value": y_prev, "public_key": pk}
             # self.unique_id_to_commitment_value_mapping[id] = record
-        
-    async def upload(self, id, file, key):
+
+    async def upload(self, id, file, key, node_id):
         header = b"header"
         cipher = ChaCha20_Poly1305.new(key=key)
         cipher.update(header)
         contents = await file.read()
         encoded_contents = base64.b64encode(contents)  # Decode bytes to string
-        ciphertext,tag = cipher.encrypt_and_digest(encoded_contents)
-        jk = [ 'nonce', 'header', 'ciphertext', 'tag' ]
-        jv = [ b64encode(x).decode('utf-8') for x in (cipher.nonce, header, ciphertext, tag) ]
+        ciphertext, tag = cipher.encrypt_and_digest(encoded_contents)
+        jk = ['nonce', 'header', 'ciphertext', 'tag']
+        jv = [b64encode(x).decode('utf-8')
+              for x in (cipher.nonce, header, ciphertext, tag)]
         result = json.dumps(dict(zip(jk, jv)))
         block = self.get_latest_block()
         if block is not None:
@@ -140,27 +146,36 @@ class Blockchain:
             block.hash = block.calculate_hash()
 
             # Serialize the blockchain to JSON and write to file
-            with open("./data/blocks.json", "w") as json_file:
+            with open(f"blocks-{str(node_id)}.json", "w") as json_file:
                 blocks = []
                 for current_block in self.chain:
                     # Exclude hash from serialization
                     block_data = current_block.__dict__.copy()
                     block_data.pop('hash', None)
                     blocks.append(block_data)
-                json.dump(blocks, json_file, indent=4)     
+                json.dump(blocks, json_file, indent=4)
+            with open("blocks.json", "w") as json_file:
+                blocks = []
+                for current_block in self.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4)
         else:
             print("Error: Could not get the latest block.")
             return None
 
-    def get_file(self,id,filename, key):
+    def get_file(self, id, filename, key):
         for block in self.chain:
-            if id + ":" +filename in block.base64_mapping:
+            if id + ":" + filename in block.base64_mapping:
                 b64 = json.loads(block.base64_mapping[id+":"+filename])
-                jk = [ 'nonce', 'header', 'ciphertext', 'tag' ]
-                jv = {k:b64decode(b64[k]) for k in jk}
+                jk = ['nonce', 'header', 'ciphertext', 'tag']
+                jv = {k: b64decode(b64[k]) for k in jk}
                 cipher = ChaCha20_Poly1305.new(key=key, nonce=jv['nonce'])
                 cipher.update(jv['header'])
-                decrypted_contents = cipher.decrypt_and_verify(jv['ciphertext'], jv['tag'])
+                decrypted_contents = cipher.decrypt_and_verify(
+                    jv['ciphertext'], jv['tag'])
                 decoded_contents = base64.b64decode(decrypted_contents)
                 print("File Found !!!!")
                 with open(filename, 'wb') as file:

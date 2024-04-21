@@ -32,16 +32,17 @@ class BullyNode(Node):
         self.connected_keys = {}
 
         try:
-            with open("./data/internal_state.json","r") as file:
-                self.blockchain.unique_id_to_commitment_value_mapping = json.load(file)
+            with open("internal_state.json", "r") as file:
+                self.blockchain.unique_id_to_commitment_value_mapping = json.load(
+                    file)
         except IOError as e:
             print(f"Error reading data: {e}")
 
         try:
-            with open("./data/blocks.json","r") as file:
+            with open(f"blocks.json", "r") as file:
                 blocks = []
                 data = json.load(file)
-                for i in data :
+                for i in data:
                     json_dict = i
                     index = json_dict.get("index")
                     leader_ip = json_dict.get("leader_ip")
@@ -51,19 +52,20 @@ class BullyNode(Node):
                     user_data = json_dict.get("user_data")
                     logs = json_dict.get("logs")
                     timestamp = json_dict.get("timestamp")
-                    block = Block(index,leader_ip,previous_hash,data,digital_signature,user_data,logs,timestamp)
+                    block = Block(index, leader_ip, previous_hash, data,
+                                  digital_signature, user_data, logs, timestamp)
                     block.base64_mapping = json_dict["base64_mapping"]
                     block.file_mapping = json_dict["file_mapping"]
                     blocks.append(block)
                 self.blockchain.chain = blocks
         except IOError as e:
-            print(f"Error reading data :{e}")            
+            print(f"Error reading data :{e}")
 
     # used to identity whether current node is contesting for leader or not
     electionProcess = False
     votes = 0
     stop_leaderElection = threading.Event()
-    is_leader_election_happening = threading.Event();
+    is_leader_election_happening = threading.Event()
     leader = None
     prevLeader = None
     published = False
@@ -112,12 +114,16 @@ class BullyNode(Node):
             pk.close()
     # Broadcasting public keys to all other nodes connected with us
             key_msg = {"event": "Key Exchange Reply",
-                       "message": open("pk"+str(self.id)+".pem").read()}
+                       "message": open("pk"+str(self.id)+".pem").read(),
+                       "blocks": self.blockchain.chain}
             self.send_to_node(node, key_msg)
             os.remove("pk"+str(self.id)+".pem")
 
         if data['event'] == "Key Exchange Reply":
+            print(data)
             self.connected_keys[node.id] = (RSA.import_key(data["message"]))
+            if (len(data["blocks"]) > len(self.blockchain.chain)):
+                self.blockchain.chain = data["blocks"]
             return
 
         # Once leader is set then other nodes's response are invalid
@@ -134,25 +140,26 @@ class BullyNode(Node):
         if data["event"] == "Heartbeat":
             print(decrypt(self, data["message"]))
             return
-            
+
         if data["event"] == "Record Update":
-            unique_id , index , commitment_value = (decrypt(self,data["message"])).split(":")
+            unique_id, index, commitment_value = (
+                decrypt(self, data["message"])).split(":")
             record = self.blockchain.unique_id_to_commitment_value_mapping[unique_id]
             record["index"] = int(index)
             record["commitment_value"] = commitment_value
             self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = record
             print("Record Updated")
-            return 
-        
+            return
+
         # After block is published .. New message is sent to reset leader
         if data['event'] == "Block Published":
             latest_block = self.blockchain.get_latest_block()
-            received_data = json.loads(decrypt(self,data["message"]))
+            received_data = json.loads(decrypt(self, data["message"]))
             # if not self.verify_signature(node,received_data["pool_data"],received_data["data"],received_data["signature"]) == False:
             #     print("Recevied Block Signature invalid")
             #     return
             new_block = Block(latest_block.index + 1, self.leader_ip,
-                              latest_block.hash, received_data["data"], received_data["signature"],received_data["pool_data"], [] , int(time.time()))
+                              latest_block.hash, received_data["data"], received_data["signature"], received_data["pool_data"], [], int(time.time()))
             self.blockchain.add_block(new_block)
             self.blockchain.logs = []
             print("Block Published by Leader")
@@ -160,7 +167,15 @@ class BullyNode(Node):
             self.electionProcess = False
             self.stop_leaderElection.clear()
             self.published = False
-            with open("./data/blocks.json", "w") as json_file:
+            with open(f"blocks-{str(self.id)}.json", "w") as json_file:
+                blocks = []
+                for current_block in self.blockchain.chain:
+                    # Exclude hash from serialization
+                    block_data = current_block.__dict__.copy()
+                    block_data.pop('hash', None)
+                    blocks.append(block_data)
+                json.dump(blocks, json_file, indent=4)
+            with open("blocks.json", "w") as json_file:
                 blocks = []
                 for current_block in self.blockchain.chain:
                     # Exclude hash from serialization
@@ -169,37 +184,46 @@ class BullyNode(Node):
                     blocks.append(block_data)
                 json.dump(blocks, json_file, indent=4)
             return
-        
+
         if data["event"] == "Registration":
-            unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
-            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 1 , "commitment_value" : commitment_value , "public_key" : public_key}
+            unique_id, commitment_value, public_key = (
+                decrypt(self, data["message"])).split(":")
+            self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {
+                "index": 1, "commitment_value": commitment_value, "public_key": public_key}
             print("User Registered")
             return
-    
+
         if data['event'] == "Transaction Pool Update":
-            unique_id, txn = (decrypt(self,data["message"])).split(":")
+            unique_id, txn = (decrypt(self, data["message"])).split(":")
             self.store_user_data(unique_id, txn)
-    
+
         if data['event'].split(":")[0] == "File Upload":
-            event =  data['event'].split(":")
+            event = data['event'].split(":")
             unique_id = event[1]
             filename = event[2]
-            base64_data = decrypt(self,data['message'])
+            base64_data = decrypt(self, data['message'])
             if unique_id not in self.blockchain.get_latest_block().file_mapping:
-                self.blockchain.get_latest_block().file_mapping[unique_id] = [filename]
+                self.blockchain.get_latest_block().file_mapping[unique_id] = [
+                    filename]
             else:
-                self.blockchain.get_latest_block().file_mapping[unique_id].append(filename)
-            self.blockchain.get_latest_block().base64_mapping[unique_id + ":" + filename] = base64_data
-            self.blockchain.get_latest_block().hash = self.blockchain.get_latest_block().calculate_hash()
+                self.blockchain.get_latest_block(
+                ).file_mapping[unique_id].append(filename)
+            self.blockchain.get_latest_block(
+            ).base64_mapping[unique_id + ":" + filename] = base64_data
+            self.blockchain.get_latest_block(
+            ).hash = self.blockchain.get_latest_block().calculate_hash()
 
-    def store_user_data(self,unique_id,data):
+    def store_user_data(self, unique_id, data):
         pool = self.pool
-        pool.add_user_data_to_pool(unique_id,data)
-    
+        pool.add_user_data_to_pool(unique_id, data)
+
     def store_otp_state(self):
-        with open("./data/internal_state.json","w") as file:
+        with open(f"internal_state-{str(self.id)}.json", "w") as file1:
             json.dump(self.blockchain.unique_id_to_commitment_value_mapping,
-                          file,indent=4) 
+                      file1, indent=4)
+        with open("internal_state.json", "w") as file2:
+            json.dump(
+                self.blockchain.unique_id_to_commitment_value_mapping, file2, indent=4)
 
     def node_disconnect_with_outbound_node(self, node):
         print("Diconnecting from ->", node)
@@ -228,7 +252,7 @@ class BullyNode(Node):
             # print("sent")
         return
 
-    def get_signature(self,data):
+    def get_signature(self, data):
         private_key = self.keys['private_key']
         priKey = serialization.load_pem_private_key(private_key, password=None)
         bytes_data = data.encode('utf-8')
@@ -245,13 +269,13 @@ class BullyNode(Node):
             hashes.SHA256()
         )
         return sig.decode("latin-1")
-    
-    def verify_signature(self,node,pool_data,data,signature):
+
+    def verify_signature(self, node, pool_data, data, signature):
         print("Verify")
         data = json.dumps({
-        "node": str(node.host),
-        "pool_data": pool_data,
-        "data" : data
+            "node": str(node.host),
+            "pool_data": pool_data,
+            "data": data
         }).encode()
 
         pk = self.connected_keys[node.id]

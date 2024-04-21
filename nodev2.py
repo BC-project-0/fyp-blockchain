@@ -52,16 +52,32 @@ def get_node_list():
     return lines
 
 # FOR CMD LINE
-# id = sys.argv[1]
+id = sys.argv[1]
 
 # FOR DOCKER COMPOSE
-id = os.environ.get("NODE_ID")
+# id = os.environ.get("NODE_ID")
 
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
 node = BullyNode("127.0.0.1", 8000+int(id), id=id)
 node.start()
 time.sleep(5)
+
+blockchain = node.blockchain
+
+node_ip = get_node_list()
+    
+# for i in node_ip:
+#     addr = i.split(":")
+#     result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
+#     print(" Result:",result)
+
+
+connections = 5
+for i in range(connections):
+    if i != id:
+        result = node.connect_with_node('127.0.0.1',8000 + i)
+
 
 pk = open("pk"+str(node.id)+".pem", "wb")
 pk.write(node.keys["public_key"])
@@ -70,23 +86,6 @@ key_msg = {"event": "Key Exchange Request",
            "message": open("pk"+str(node.id)+".pem").read()}
 node.send_to_nodes(key_msg)
 os.remove("pk"+str(node.id)+".pem")
-
-blockchain = node.blockchain
-
-node_ip = get_node_list()
-    
-for i in node_ip:
-    addr = i.split(":")
-    result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
-    print(" Result:",result)
-
-
-# connections = 5
-# for i in range(connections):
-#     if i != id:
-#         print("Connecting to "+ "127.0.0.1:"+ str(8000 + i))
-#         result = node.connect_with_node('127.0.0.1',8000 + i)
-#         print("Result:",result)
 
 @app.get("/nodes")
 async def get_nodes():
@@ -235,4 +234,4 @@ async def get_file(id: str, filename: str):
         return {"message": "File retrieval failed"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=81)
+    uvicorn.run(app, host="0.0.0.0", port=80+int(id))

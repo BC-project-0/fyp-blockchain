@@ -56,12 +56,33 @@ def get_node_list():
 
     return lines
 
+# FOR CMD LINE
+id = sys.argv[1]
+
+# FOR DOCKER COMPOSE
+# id = os.environ.get("NODE_ID")
 
 key = b'Ywz&[\xb0\xdf\xd86\xe0/\xc7\x9a\xa5\xc5:_(5\xb956\x8d*\xd9\xe2\nA\xc6\x8f6]'
 print('Node '+id)
 node = BullyNode("127.0.0.1", 8000+int(id), id=id)
 node.start()
 time.sleep(5)
+
+blockchain = node.blockchain
+
+node_ip = get_node_list()
+    
+# for i in node_ip:
+#     addr = i.split(":")
+#     result = node.connect_with_node(addr[0], 8000 + int(addr[1]))
+#     print(" Result:",result)
+
+
+connections = 5
+for i in range(connections):
+    if i != id:
+        result = node.connect_with_node('127.0.0.1',8000 + i)
+
 
 pk = open("pk"+str(node.id)+".pem", "wb")
 pk.write(node.keys["public_key"])

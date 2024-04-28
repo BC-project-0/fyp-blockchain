@@ -32,7 +32,7 @@ class BullyNode(Node):
         self.connected_keys = {}
 
         try:
-            with open("./data/internal_state.json","r") as file:
+            with open(f"internal_state-{str(self.id)}.json","r") as file:
                 self.blockchain.unique_id_to_commitment_value_mapping = json.load(file)
         except IOError as e:
             print(f"Error reading data: {e}")
@@ -68,6 +68,11 @@ class BullyNode(Node):
     prevLeader = None
     published = False
     leader_ip = None
+
+    def store_otp_state(self):
+        with open(f"internal_state-{str(self.id)}.json","w") as file:
+            json.dump(self.blockchain.unique_id_to_commitment_value_mapping,
+                          file,indent=4) 
 
     def node_message(self, node, data):
         def decrypt(self, data):
@@ -117,10 +122,12 @@ class BullyNode(Node):
                 blocks.append(block_data)
 
             blockchain = json.dumps(blocks, indent=4)
+            state = json.dumps(self.blockchain.unique_id_to_commitment_value_mapping,indent=4)
     # Broadcasting public keys to all other nodes connected with us
             key_msg = {"event": "Key Exchange Reply",
                        "message": open("pk"+str(self.id)+".pem").read(),
-                       "blockchain": blockchain}
+                       "blockchain": blockchain,
+                       "state":state}
             self.send_to_node(node, key_msg)
             os.remove("pk"+str(self.id)+".pem")
 
@@ -128,6 +135,7 @@ class BullyNode(Node):
             self.connected_keys[node.id] = (RSA.import_key(data["message"]))
             blocks = []
             blocksData = json.loads(data['blockchain'])
+            internalState = json.loads(data['state'])
             for i in blocksData :
                 json_dict = i
                 index = json_dict.get("index")
@@ -145,6 +153,7 @@ class BullyNode(Node):
             
             if (len(blocks) > len(self.blockchain.chain)):
                 self.blockchain.chain = blocks
+                self.blockchain.unique_id_to_commitment_value_mapping = internalState
                 with open(f"blocks-{str(self.id)}.json", "w") as json_file:
                     storeBlocks = []
                     for current_block in self.blockchain.chain:
@@ -153,6 +162,8 @@ class BullyNode(Node):
                         block_data.pop('hash', None)
                         storeBlocks.append(block_data)
                     json.dump(storeBlocks, json_file, indent=4) 
+                with open(f"internal_state-{str(self.id)}.json","w") as file:
+                    json.dump(self.blockchain.unique_id_to_commitment_value_mapping,file,indent=4) 
             return
 
         # Once leader is set then other nodes's response are invalid
@@ -203,20 +214,21 @@ class BullyNode(Node):
                     block_data.pop('hash', None)
                     blocks.append(block_data)
                 json.dump(blocks, json_file, indent=4)
-            with open("./data/blocks.json", "w") as json_file:
-                blocks = []
-                for current_block in self.blockchain.chain:
-                    # Exclude hash from serialization
-                    block_data = current_block.__dict__.copy()
-                    block_data.pop('hash', None)
-                    blocks.append(block_data)
-                json.dump(blocks, json_file, indent=4)
+            # with open("./data/blocks.json", "w") as json_file:
+            #     blocks = []
+            #     for current_block in self.blockchain.chain:
+            #         # Exclude hash from serialization
+            #         block_data = current_block.__dict__.copy()
+            #         block_data.pop('hash', None)
+            #         blocks.append(block_data)
+            #     json.dump(blocks, json_file, indent=4)
             return
         
         if data["event"] == "Registration":
             unique_id , commitment_value , public_key = (decrypt(self,data["message"])).split(":")
             self.blockchain.unique_id_to_commitment_value_mapping[unique_id] = {"index" : 1 , "commitment_value" : commitment_value , "public_key" : public_key}
             print("User Registered")
+            self.store_otp_state()
             return
     
         if data['event'] == "Transaction Pool Update":
@@ -239,10 +251,6 @@ class BullyNode(Node):
         pool = self.pool
         pool.add_user_data_to_pool(unique_id,data)
     
-    def store_otp_state(self):
-        with open("./data/internal_state.json","w") as file:
-            json.dump(self.blockchain.unique_id_to_commitment_value_mapping,
-                          file,indent=4) 
 
     def node_disconnect_with_outbound_node(self, node):
         print("Diconnecting from ->", node)

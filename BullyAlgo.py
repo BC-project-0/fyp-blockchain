@@ -94,11 +94,11 @@ def publish_block(currNode):
             block_data.pop('hash', None)
             blocks.append(block_data)
         json.dump(blocks, json_file, indent=4)
-    with open("./data/blocks.json", "w") as json_file:
-        blocks = []
-        for current_block in currNode.blockchain.chain:
-                    # Exclude hash from serialization
-            block_data = current_block.__dict__.copy()
-            block_data.pop('hash', None)
-            blocks.append(block_data)
-        json.dump(blocks, json_file, indent=4)
+    # with open("./data/blocks.json", "w") as json_file:
+    #     blocks = []
+    #     for current_block in currNode.blockchain.chain:
+    #                 # Exclude hash from serialization
+    #         block_data = current_block.__dict__.copy()
+    #         block_data.pop('hash', None)
+    #         blocks.append(block_data)
+    #     json.dump(blocks, json_file, indent=4)
